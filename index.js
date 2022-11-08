@@ -50,10 +50,11 @@ async function run(){
                
           })
 
-          //Reviews
-          app.post('/reviews', (req, res)=>{
-               const reviews = {name:Bappy, logo:'lskdoidosk'}
-               const result = reviewCollection.insertOne(reviews);
+          
+          app.post('/allService', async (req, res)=>{
+               const service = req.body;
+               const result = await serviceCollection.insertOne(service)
+               res.send(result)
           })
 
 
