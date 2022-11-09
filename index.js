@@ -21,69 +21,102 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 // console.log(uri);
 
-function verifyJWT(req, res, next){
+function verifyJWT(req, res, next) {
      const authHeader = req.headers.authorization;
-     if(!authHeader){
-          return res.status(401).send({message: 'unauthorized access'});
-      }
-      const token = authHeader.split(' ')[1];
-  
-      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded){
-          if(err){
-              return res.status(403).send({message: 'Forbidden access'});
+     if (!authHeader) {
+          return res.status(401).send({ message: 'unauthorized access' });
+     }
+     const token = authHeader.split(' ')[1];
+
+     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+          if (err) {
+               return res.status(403).send({ message: 'Forbidden access' });
           }
           req.decoded = decoded;
           next();
-      })
+     })
 }
 
-async function run(){
+async function run() {
 
-     try{
+     try {
           const serviceCollection = client.db('homeService').collection('services');
-          const reviewCollection =  client.db('homeService').collection('reviews');
+          const reviewCollection = client.db('homeService').collection('reviews');
 
-          app.post('/jwt', (req,res)=>{
+          app.post('/jwt', (req, res) => {
                const user = req.body;
-               const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'})
-               res.send({token});
+               const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+               res.send({ token });
                console.log(token);
 
           })
-          app.get('/services', async (req, res)=>{
+          app.get('/services', async (req, res) => {
                const query = {};
                const cursor = serviceCollection.find(query);
                const services = await cursor.limit(3).toArray();
                res.send(services)
 
-          } )
+          })
 
-          app.get('/allService', async(req, res)=>{
+          app.get('/allService', async (req, res) => {
                const query = {};
                const cursor = serviceCollection.find(query);
                const services = await cursor.toArray();
                res.send(services)
           });
 
-          app.get('/allService/:id', async(req,res)=>{
+          app.get('/allService/:id', async (req, res) => {
                const id = req.params.id;
-               const query = {_id: ObjectId(id)};
+               const query = { _id: ObjectId(id) };
                const details = await serviceCollection.findOne(query);
                res.send(details);
-               
+
           })
 
-          
-          app.post('/allService', async (req, res)=>{
+
+          app.post('/allService', async (req, res) => {
                const service = req.body;
                const result = await serviceCollection.insertOne(service)
+               res.send(result)
+          })
+
+          // review api 
+          app.post('/reviews', async (req, res) => {
+               const review = req.body;
+               const result = await reviewCollection.insertOne(review);
+               res.send(result)
+          })
+
+          app.get('/reviews', async (req, res) => {
+
+
+               let query = {};
+               if (req.query.email) {
+                    query = {
+                         email: req.query.email
+                    }
+               }
+               const cursor = reviewCollection.find(query);
+               const review = await cursor.toArray();
+               res.send(review)
+          })
+
+          app.get('/reviews/service', async (req, res) => {
+               let query = {};
+               if (req.query.serviceID) {
+                    query = {
+                         serviceId: req.query.serviceID,
+                    };
+               }
+               const reviews = await reviewCollection.find(query).toArray();
+               const result = reviews.sort().reverse();
                res.send(result)
           })
 
 
      }
 
-     finally{
+     finally {
 
      }
 
@@ -91,10 +124,10 @@ async function run(){
 
 run().catch(err => console.log(err))
 
-app.get('/', (req, res)=>{
+app.get('/', (req, res) => {
      res.send('home service running')
 })
 
-app.listen(port, ()=>{
+app.listen(port, () => {
      console.log(`home service server running on ${port}`);
 })
