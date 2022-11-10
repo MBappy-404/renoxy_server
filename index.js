@@ -47,7 +47,7 @@ async function run() {
                const user = req.body;
                const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
                res.send({ token });
-               console.log(token);
+               // console.log(token);
 
           })
           app.get('/services', async (req, res) => {
@@ -87,8 +87,15 @@ async function run() {
                res.send(result)
           })
 
-          app.get('/reviews', async (req, res) => {
+          app.get('/reviews', verifyJWT, async (req, res) => {
 
+               // console.log(req.headers.authorization)
+               const decoded = req.decoded;
+               // console.log(decoded);
+               if(decoded.email !== req.query.email){
+                    res.status(403).send({message: Unauthorize})
+
+               }
 
                let query = {};
                if (req.query.email) {
@@ -111,6 +118,30 @@ async function run() {
                const reviews = await reviewCollection.find(query).toArray();
                const result = reviews.sort().reverse();
                res.send(result)
+          })
+
+          app.delete('/reviews/:id', async(req, res)=>{
+               const id = req.params.id;
+               const query = {_id: ObjectId(id)};
+               const result = await reviewCollection.deleteOne(query);
+               res.send(result);
+          })
+
+          app.put('/reviews/:id', async(req, res)=>{
+               const id = req.params.id;
+               const filter = {_id: ObjectId(id)};
+               const review = req.body;
+               // console.log(updateReview);
+               const option = {upsert: true};
+               const updateReview = {
+                    $set:{
+                         rating: review.rating,
+                         message: review.message
+                    }
+               }
+               const result = await reviewCollection.updateOne(filter,updateReview, option )
+
+               res.send(result);
           })
 
 
